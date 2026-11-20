@@ -1852,7 +1852,7 @@
         }
 
         return `
-          <div class="flex ${isMine ? 'justify-end' : 'justify-start'} group">
+          <div class="flex ${isMine ? 'justify-end' : 'justify-start'} group" data-obro-message="${msg.id}">
             <div class="relative max-w-[82%] sm:max-w-[68%] px-3.5 py-2 rounded-2xl shadow-sm ${isMine ? 'bg-[#d9fdd3] dark:bg-[#005c4b] text-slate-900 dark:text-white rounded-tr-sm' : 'bg-white dark:bg-[#202c33] text-slate-900 dark:text-white rounded-tl-sm'}">
               ${chat.isGroup && !isMine ? `<div class="text-[11px] font-bold text-[#00a884] mb-0.5">${escapeHtml(senderObj?.name || msg.sender)}</div>` : ''}
               ${bodyHtml}
@@ -3039,7 +3039,7 @@
         return `<div class="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-[#202c33]" onclick="openWorkspace('${chat.isGroup?'group':'chat'}','${chat.id}')">
           <img src="${avatar}" class="w-12 h-12 rounded-full object-cover shrink-0" onclick="event.stopPropagation();${peerPhone?`openContactProfile('${peerPhone}')`:''}">
           <div class="flex-1 min-w-0"><div class="flex justify-between gap-2"><div class="flex items-center gap-1 min-w-0"><b class="text-sm truncate">${escapeHtml(title)}</b>${peer?.isVerified?'<span class="text-[#53bdeb]">✓</span>':''}</div><span class="text-[11px] text-slate-400">${last?formatTime(last.timestamp):''}</span></div>
-          <div class="flex items-center justify-between mt-1"><div class="flex items-center gap-1 min-w-0 text-xs text-slate-500">${tick}<span class="truncate">${escapeHtml(preview)}</span></div>${unread?'<span class="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0" title="Belum dibaca"></span>':''}</div></div></div>`;
+          <div class="flex items-center justify-between mt-1"><div class="flex items-center gap-1 min-w-0 text-xs text-slate-500">${tick}<span class="truncate">${escapeHtml(preview)}</span></div>${unread?`<span class="min-w-5 h-5 px-1 rounded-full bg-green-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0" title="${unread} pesan belum dibaca">${unread}</span>`:''}</div></div></div>`;
       }).join('') || '<p class="p-6 text-center text-xs text-slate-400">Belum ada obrolan.</p>';
     };
 
@@ -3660,6 +3660,225 @@
       return `<svg class="w-4 h-4 inline shrink-0 ${cls}" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2 13l4 4L15 8m-4 9l4 4L22 10"/></svg>`;
     };
 
+
+    // === PENYEMPURNAAN PROFIL, PENGATURAN, STORY, DAN WALLPAPER ===
+    // Seluruh fitur lama dipertahankan; perubahan ini ditambahkan sebagai lapisan UI.
+    function ensureWallpaperModal(){
+      if(document.getElementById('obro-wallpaper-modal')) return;
+      const modal=document.createElement('div');
+      modal.id='obro-wallpaper-modal';
+      modal.className='hidden fixed inset-0 z-[180] bg-black/75 backdrop-blur-sm items-center justify-center p-3';
+      modal.innerHTML=`
+        <section class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-[#182229] text-slate-900 dark:text-white shadow-2xl">
+          <header class="sticky top-0 z-10 flex items-center justify-between gap-3 p-4 bg-white/95 dark:bg-[#182229]/95 backdrop-blur border-b border-slate-200 dark:border-white/10">
+            <div><h3 class="font-bold">Wallpaper Chat</h3><p class="text-xs text-slate-400">Pilih latar untuk semua chat atau chat yang sedang dibuka</p></div>
+            <button onclick="saveWallpaperSelection()" class="px-4 py-2 rounded-xl bg-[#00a884] text-white text-xs font-bold">✓ Simpan</button>
+          </header>
+          <div class="p-4 space-y-4">
+            <div class="grid grid-cols-2 gap-2">
+              <button data-wall-choice="aurora" onclick="chooseWallpaper('aurora')" class="obro-wall-choice h-20 rounded-2xl" style="background:linear-gradient(135deg,#0f766e,#164e63,#312e81)"><span class="sr-only">Aurora</span></button>
+              <button data-wall-choice="sunset" onclick="chooseWallpaper('sunset')" class="obro-wall-choice h-20 rounded-2xl" style="background:linear-gradient(135deg,#f97316,#db2777,#7c3aed)"></button>
+              <button data-wall-choice="ocean" onclick="chooseWallpaper('ocean')" class="obro-wall-choice h-20 rounded-2xl" style="background:linear-gradient(135deg,#0c4a6e,#0369a1,#0f172a)"></button>
+              <button data-wall-choice="rose" onclick="chooseWallpaper('rose')" class="obro-wall-choice h-20 rounded-2xl" style="background:linear-gradient(135deg,#881337,#be185d,#4c1d95)"></button>
+              <button data-wall-choice="light" onclick="chooseWallpaper('light')" class="obro-wall-choice h-20 rounded-2xl border" style="background:linear-gradient(135deg,#f8fafc,#dbeafe,#fce7f3)"></button>
+              <button data-wall-choice="default" onclick="chooseWallpaper('default')" class="obro-wall-choice h-20 rounded-2xl bg-slate-200 dark:bg-slate-700 text-xs font-semibold">Default</button>
+            </div>
+            <div class="rounded-2xl border border-slate-200 dark:border-white/10 p-3 space-y-2">
+              <label class="flex items-center gap-2 text-sm font-semibold"><input id="obro-wall-global" type="checkbox" class="accent-emerald-600"> Terapkan ke semua chat</label>
+              <p class="text-xs text-slate-400">Jika tidak dicentang, wallpaper hanya diterapkan ke percakapan yang sedang dibuka.</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200 dark:border-white/10 p-3 space-y-2">
+              <h4 class="text-sm font-semibold">Pilih dari galeri</h4>
+              <input id="obro-wall-file" type="file" accept="image/*" class="block w-full text-xs">
+              <img id="obro-wall-preview" class="hidden w-full max-h-48 object-cover rounded-xl" alt="Pratinjau wallpaper">
+              <p class="text-[11px] text-slate-400">Foto pilihan akan menjadi wallpaper chat setelah tombol Simpan ditekan.</p>
+            </div>
+          </div>
+        </section>`;
+      modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.add('hidden');});
+      document.body.appendChild(modal);
+      document.getElementById('obro-wall-file').addEventListener('change',e=>{
+        const f=e.target.files?.[0]; if(!f)return;
+        if(!f.type.startsWith('image/'))return showToast('File tidak sesuai','Pilih file gambar.','error');
+        const reader=new FileReader();
+        reader.onload=ev=>{window.__obroPendingWallpaper=ev.target.result;const im=document.getElementById('obro-wall-preview');im.src=ev.target.result;im.classList.remove('hidden');window.__obroPendingWallpaperChoice='custom';};
+        reader.readAsDataURL(f);
+      });
+    }
+    let obroWallpaperChoice='default';
+    function chooseWallpaper(choice){
+      obroWallpaperChoice=choice;window.__obroPendingWallpaperChoice=choice;
+      document.querySelectorAll('.obro-wall-choice').forEach(b=>b.classList.toggle('ring-4',b.dataset.wallChoice===choice));
+      document.querySelectorAll('.obro-wall-choice').forEach(b=>b.classList.toggle('ring-[#00a884]',b.dataset.wallChoice===choice));
+      window.__obroPendingWallpaper=null;
+      const preview=document.getElementById('obro-wall-preview');if(preview)preview.classList.add('hidden');
+    }
+    function openWallpaperSettings(){
+      ensureWallpaperModal();
+      const me=getUser(currentUserPhone);
+      obroWallpaperChoice=(activeWorkspace&&['chat','group'].includes(activeWorkspace.type)?db.chats[activeWorkspace.id]?.wallpaper:null)||me?.defaultWallpaper||'default';
+      window.__obroPendingWallpaperChoice=obroWallpaperChoice;
+      document.getElementById('obro-wall-global').checked=!(activeWorkspace&&['chat','group'].includes(activeWorkspace.type));
+      document.getElementById('obro-wall-file').value='';
+      document.getElementById('obro-wall-preview').classList.add('hidden');
+      chooseWallpaper(obroWallpaperChoice);
+      document.getElementById('obro-wallpaper-modal').classList.remove('hidden');
+      document.getElementById('obro-wallpaper-modal').classList.add('flex');
+    }
+    function saveWallpaperSelection(){
+      const me=getUser(currentUserPhone);if(!me)return;
+      const choice=window.__obroPendingWallpaperChoice||obroWallpaperChoice;
+      const custom=window.__obroPendingWallpaper||null;
+      const global=document.getElementById('obro-wall-global').checked;
+      const value=custom||choice;
+      if(global){
+        me.defaultWallpaper=value;
+        Object.values(db.chats).forEach(c=>{if(c.members?.includes(currentUserPhone))c.wallpaper=value;});
+      }else{
+        if(!activeWorkspace||!['chat','group'].includes(activeWorkspace.type))return showToast('Pilih chat','Buka chat terlebih dahulu atau aktifkan Terapkan ke semua chat.','warn');
+        const c=db.chats[activeWorkspace.id];if(!c)return;
+        c.wallpaper=value;
+      }
+      saveDatabase();applyChatWallpaper();
+      const modal=document.getElementById('obro-wallpaper-modal');modal.classList.add('hidden');modal.classList.remove('flex');
+      showToast('Wallpaper tersimpan','Wallpaper berhasil diterapkan.');
+    }
+    const _applyChatWallpaperObro=applyChatWallpaper;
+    applyChatWallpaper=function(){
+      _applyChatWallpaperObro();
+      const el=document.getElementById('ws-messages-container');if(!el)return;
+      const me=getUser(currentUserPhone),chat=activeWorkspace&&db.chats[activeWorkspace.id];
+      const value=chat?.wallpaper||me?.defaultWallpaper||'default';
+      const colors={'default':'','aurora':'linear-gradient(135deg,#0f766e,#164e63,#312e81)','sunset':'linear-gradient(135deg,#f97316,#db2777,#7c3aed)','ocean':'linear-gradient(135deg,#0c4a6e,#0369a1,#0f172a)','rose':'linear-gradient(135deg,#881337,#be185d,#4c1d95)','light':'linear-gradient(135deg,#f8fafc,#dbeafe,#fce7f3)'};
+      el.style.background=value==='custom'?`url("${me?.customWallpaper||''}") center/cover`:colors[value]||'';
+      if(typeof value==='string'&&value.startsWith('data:image/'))el.style.background=`url("${value}") center/cover`;
+    };
+    // Settings dibuat vertikal dan rapi; tombol wallpaper membuka halaman pemilih khusus.
+    const _renderSettingsObro=renderSettingsTab;
+    renderSettingsTab=function(){
+      _renderSettingsObro();
+      const host=document.getElementById('tab-content-settings');if(!host)return;
+      host.classList.remove('space-y-5');host.classList.add('space-y-3');
+      host.querySelectorAll(':scope > div, :scope > section').forEach(card=>{card.classList.add('w-full');});
+      if(!document.getElementById('obro-wallpaper-entry')){
+        const card=document.createElement('button');card.id='obro-wallpaper-entry';card.type='button';
+        card.className='w-full p-4 rounded-2xl bg-slate-50 dark:bg-[#202c33] border border-slate-200/70 dark:border-white/5 flex items-center gap-3 text-left hover:border-[#00a884] transition';
+        card.innerHTML='<span class="w-11 h-11 rounded-xl bg-[#00a884]/15 text-[#00a884] grid place-items-center text-xl">▧</span><span class="flex-1"><b class="block text-sm">Wallpaper Chat</b><small class="block text-xs text-slate-400 mt-1">Atur latar chat dari tema atau foto galeri</small></span><span class="text-slate-400">›</span>';
+        card.onclick=openWallpaperSettings;host.appendChild(card);
+      }
+    };
+    // Profil sendiri mudah dibuka melalui avatar, dan diarahkan ke pengaturan profil.
+    document.getElementById('rail-user-avatar')?.parentElement?.addEventListener('click',()=>setMainTab('settings'));
+    // Profil kontak: tindakan chat, panggilan, video call, dan simpan kontak.
+    const _openContactProfileObro=openContactProfile;
+    openContactProfile=function(phone){
+      _openContactProfileObro(phone);
+      const peer=getUser(phone);if(!peer)return;
+      const box=document.getElementById('feature-profile-content');
+      if(!box||box.querySelector('[data-obro-contact-actions]'))return;
+      const actions=document.createElement('div');actions.dataset.obroContactActions='1';
+      actions.className='grid grid-cols-2 gap-2 w-full mt-2';
+      actions.innerHTML=`<button class="p-2.5 rounded-xl bg-[#00a884] text-white text-xs font-bold" onclick="openDirectChat('${phone}');closeModal('modal-feature-profile')">Chat</button>
+        <button class="p-2.5 rounded-xl bg-slate-500/15 text-xs font-bold" onclick="startContactCall('${phone}','voice')">☎ Telepon</button>
+        <button class="p-2.5 rounded-xl bg-slate-500/15 text-xs font-bold" onclick="startContactCall('${phone}','video')">▣ Video call</button>
+        <button class="p-2.5 rounded-xl bg-slate-500/15 text-xs font-bold" onclick="saveContactOnly('${phone}')">＋ Simpan kontak</button>`;
+      box.querySelector('.flex.gap-2.w-full')?.after(actions)||box.appendChild(actions);
+    };
+    function saveContactOnly(phone){
+      const me=getUser(currentUserPhone);if(!me)return;
+      me.contacts=me.contacts||[];
+      if(!me.contacts.includes(phone))me.contacts.push(phone);
+      saveDatabase();renderAllViews();
+      showToast('Kontak disimpan',`${getUser(phone)?.name||phone} ditambahkan ke kontak.`);
+      openContactProfile(phone);
+    }
+    function startContactCall(phone,type){
+      const chatId=getDirectChatId(currentUserPhone,phone);
+      if(!db.chats[chatId])db.chats[chatId]={id:chatId,isGroup:false,members:[currentUserPhone,phone],messages:[]};
+      activeWorkspace={type:'chat',id:chatId};
+      closeModal('modal-feature-profile');startCall(type);
+    }
+    // Story milik sendiri dapat dilihat daftar penontonnya dan dihapus.
+    function openMyStoryManager(){
+      const mine=db.stories.filter(x=>x.ownerPhone===currentUserPhone);
+      let modal=document.getElementById('obro-my-story-manager');
+      if(!modal){modal=document.createElement('div');modal.id='obro-my-story-manager';modal.className='fixed inset-0 z-[175] bg-black/75 flex items-center justify-center p-3';document.body.appendChild(modal);}
+      modal.innerHTML=`<section class="w-full max-w-md max-h-[85vh] overflow-y-auto rounded-3xl bg-white dark:bg-[#182229] text-slate-900 dark:text-white p-4 space-y-3">
+        <header class="flex items-center justify-between"><div><h3 class="font-bold">Story Saya</h3><p class="text-xs text-slate-400">${mine.length} story aktif</p></div><button onclick="document.getElementById('obro-my-story-manager').remove()" class="text-2xl text-slate-400">×</button></header>
+        <button onclick="openStoryComposer()" class="w-full p-3 rounded-xl bg-[#00a884] text-white text-xs font-bold">＋ Tambah foto / video / teks</button>
+        ${mine.map(st=>`<article class="p-3 rounded-2xl bg-slate-500/10 space-y-2">
+          ${st.type==='image'&&st.mediaSrc?`<img src="${st.mediaSrc}" class="w-full max-h-48 object-cover rounded-xl">`:''}
+          ${st.type==='video'&&st.mediaSrc?`<video src="${st.mediaSrc}" controls class="w-full max-h-48 rounded-xl"></video>`:''}
+          <p class="text-sm">${escapeHtml(st.caption||st.text||'Story media')}</p>
+          <p class="text-[10px] text-slate-400">${formatTime(st.createdAt)} · ${(st.views||[]).length} dilihat</p>
+          <div class="flex gap-2"><button onclick="showMyStoryViewers('${st.id}')" class="flex-1 p-2 rounded-lg bg-slate-500/15 text-xs">Lihat penonton</button><button onclick="deleteMyStory('${st.id}')" class="flex-1 p-2 rounded-lg bg-rose-500/15 text-rose-500 text-xs">Hapus story</button></div>
+        </article>`).join('')||'<p class="text-center text-xs text-slate-400 py-5">Belum ada story.</p>'}
+      </section>`;
+    }
+    function showMyStoryViewers(id){
+      const st=db.stories.find(x=>x.id===id);if(!st)return;
+      const viewers=st.views||[];
+      alert(`DILIHAT OLEH (${viewers.length})\n\n${viewers.map(p=>`${getUser(p)?.name||p} · ${p}`).join('\n')||'Belum ada yang melihat.'}`);
+    }
+    function deleteMyStory(id){
+      if(!confirm('Hapus story ini?'))return;
+      db.stories=db.stories.filter(x=>x.id!==id);saveDatabase();openMyStoryManager();renderStatusTab();
+      showToast('Story dihapus','Story berhasil dihapus.');
+    }
+    const _viewMyStoriesObro=viewMyStories;
+    viewMyStories=function(){openMyStoryManager();};
+    // Foto/video dan daftar story kontak tetap dapat diakses; tandai story yang belum dilihat.
+    const _renderStatusObro=renderStatusTab;
+    renderStatusTab=function(){
+      _renderStatusObro();
+      const me=getUser(currentUserPhone),list=document.getElementById('sw-friends-list');if(!me||!list)return;
+      const friends=me.contacts.map(p=>getUser(p)).filter(u=>u&&u.contacts.includes(me.phone));
+      const withStories=friends.filter(u=>db.stories.some(st=>st.ownerPhone===u.phone));
+      const heading=document.createElement('div');heading.className='text-[11px] font-bold uppercase tracking-wider text-slate-400 mt-3';heading.textContent='Kontak yang membuat story';
+      if(!list.querySelector('[data-story-contact-heading]')){heading.dataset.storyContactHeading='1';list.prepend(heading);}
+      list.querySelectorAll('[data-story-unseen]').forEach(x=>x.remove());
+      withStories.forEach(u=>{
+        const unseen=db.stories.some(st=>st.ownerPhone===u.phone&&!(st.views||[]).includes(me.phone));
+        const row=document.createElement('div');row.dataset.storyUnseen='1';row.className='hidden';
+        row.innerHTML=`<span>${unseen?'Story baru dari ': 'Story dari '}${escapeHtml(u.name)}</span>`;
+      });
+    };
+
+
+    // Pengaturan grup dipisahkan dari tampilan profil agar kontrol grup lebih jelas.
+    const _openGroupProfileSettingsObro=openGroupProfile;
+    openGroupProfile=function(){
+      _openGroupProfileSettingsObro();
+      setTimeout(()=>{
+        const box=document.getElementById('feature-profile-content');
+        if(!box||box.querySelector('[data-obro-group-settings]'))return;
+        const btn=document.createElement('button');
+        btn.dataset.obroGroupSettings='1';
+        btn.className='w-full p-3 mt-2 rounded-xl bg-[#00a884]/15 text-[#00a884] text-xs font-bold';
+        btn.textContent='⚙ Pengaturan Grup';
+        btn.onclick=openGroupSettingsPanel;
+        box.appendChild(btn);
+      },0);
+    };
+    function openGroupSettingsPanel(){
+      const c=db.chats[activeWorkspace?.id];if(!c||!c.isGroup)return;
+      let modal=document.getElementById('obro-group-settings');
+      if(!modal){modal=document.createElement('div');modal.id='obro-group-settings';modal.className='fixed inset-0 z-[190] bg-black/75 flex items-center justify-center p-3';document.body.appendChild(modal);}
+      modal.innerHTML=`<section class="w-full max-w-md rounded-3xl bg-white dark:bg-[#182229] text-slate-900 dark:text-white p-5 space-y-4">
+        <header class="flex items-center justify-between"><h3 class="font-bold">Pengaturan Grup</h3><button onclick="document.getElementById('obro-group-settings').remove()" class="text-2xl text-slate-400">×</button></header>
+        <div class="space-y-1"><label class="text-xs text-slate-400">Nama grup</label><input id="obro-group-name" value="${escapeHtml(c.name||'')}" class="w-full p-3 rounded-xl bg-slate-100 dark:bg-[#111b21] text-sm"></div>
+        <button onclick="saveGroupProfileFromSettings()" class="w-full p-3 rounded-xl bg-[#00a884] text-white text-xs font-bold">Simpan nama grup</button>
+        <button onclick="toggleGroupApproval();openGroupSettingsPanel()" class="w-full p-3 rounded-xl bg-slate-500/15 text-xs font-semibold">Persetujuan anggota: ${c.requireApproval?'Aktif':'Mati'} · Ubah</button>
+        <button onclick="openCommunityStoryManager('group')" class="w-full p-3 rounded-xl bg-purple-500/10 text-purple-500 text-xs font-semibold">Kelola story / foto / video grup</button>
+      </section>`;
+    }
+    function saveGroupProfileFromSettings(){
+      const c=db.chats[activeWorkspace?.id],name=document.getElementById('obro-group-name')?.value.trim();
+      if(!c||!name)return showToast('Nama grup kosong','Masukkan nama grup terlebih dahulu.','error');
+      c.name=name;saveDatabase();renderAllViews();openGroupSettingsPanel();
+      showToast('Grup diperbarui','Nama grup berhasil disimpan.');
+    }
+
 </script>
 
   <div id="modal-feature-profile" class="hidden fixed inset-0 z-[130] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onclick="if(event.target===this)closeModal('modal-feature-profile')">
@@ -3672,5 +3891,652 @@
     <button onclick="closeModal('modal-feature-media')" class="absolute top-4 right-5 text-white text-3xl">×</button>
     <div id="feature-media-content" class="flex items-center justify-center w-full"></div>
   </div>
+
+<style id="obro-v6-polish">
+  #tab-content-channels,#tab-content-settings,#tab-content-status{gap:14px}
+  #channels-list-container{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px}
+  #channels-list-container>div{border-radius:18px!important;padding:14px!important;box-shadow:0 4px 18px #00000008}
+  #tab-content-status .rounded-2xl{border-radius:20px}
+  .obro-action-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border-radius:12px;padding:9px 12px;font-size:12px;font-weight:700;transition:.18s}
+  .obro-member-row{display:flex;align-items:center;gap:10px;padding:10px;border-radius:14px;background:rgba(127,127,127,.07);cursor:pointer}
+  .obro-member-row:hover{background:rgba(0,168,132,.12)}
+  .obro-share-frame{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid rgba(0,168,132,.25);border-radius:18px;background:linear-gradient(135deg,rgba(0,168,132,.10),rgba(0,168,132,.025))}
+  .obro-copy-msg{opacity:.0;transition:.15s;border-radius:8px;padding:3px 7px;font-size:11px}
+  [data-message-id]:hover .obro-copy-msg{opacity:1}
+  #obro-join-overlay{backdrop-filter:blur(12px)}
+  @media(max-width:640px){.obro-copy-msg{opacity:1}}
+</style>
+<script id="obro-v6-feature-patch">
+(function(){
+  const $=id=>document.getElementById(id);
+  const esc=v=>typeof escapeHtml==='function'?escapeHtml(String(v??'')):String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const isGroupAdmin=c=>!!c&&(c.ownerPhone===currentUserPhone||(c.adminPhones||[]).includes(currentUserPhone)||(!c.ownerPhone&&c.members?.[0]===currentUserPhone));
+  const isChannelAdmin=ch=>!!ch&&(ch.ownerPhone===currentUserPhone||(ch.adminPhones||[]).includes(currentUserPhone));
+  function pushSystem(c,text){
+    c.messages=c.messages||[];
+    c.messages.push({id:'sys_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),sender:currentUserPhone,type:'system',text,timestamp:Date.now(),readBy:[currentUserPhone]});
+  }
+  function ensureRoles(){
+    if(!db)return;
+    Object.values(db.chats||{}).forEach(c=>{if(c.isGroup){c.ownerPhone=c.ownerPhone||c.members?.[0];c.adminPhones=Array.isArray(c.adminPhones)?c.adminPhones:[];c.joinRequests=c.joinRequests||[];}});
+    (db.channels||[]).forEach(ch=>{ch.adminPhones=Array.isArray(ch.adminPhones)?ch.adminPhones:[];ch.joinRequests=ch.joinRequests||[];});
+  }
+  function toast(t,m){if(typeof showToast==='function')showToast(t,m);}
+
+  // Invitation landing: users see a clear Join Group screen before joining/requesting.
+  let pendingInvite=null;
+  function inviteFromHash(){
+    const h=location.hash||'';
+    if(h.startsWith('#grup='))return {type:'group',id:decodeURIComponent(h.slice(6))};
+    if(h.startsWith('#saluran='))return {type:'channel',id:decodeURIComponent(h.slice(9))};
+    return null;
+  }
+  function showJoinLanding(){
+    const inv=inviteFromHash();if(!inv||!db)return;
+    pendingInvite=inv;
+    const c=inv.type==='group'?db.chats[inv.id]:db.channels.find(x=>x.id===inv.id);
+    if(!c){history.replaceState(null,'',location.href.split('#')[0]);return;}
+    let modal=$('obro-join-overlay');
+    if(!modal){modal=document.createElement('div');modal.id='obro-join-overlay';modal.className='fixed inset-0 z-[240] bg-black/70 flex items-center justify-center p-4';document.body.appendChild(modal);}
+    const group=inv.type==='group';
+    const count=group?(c.members||[]).length:(c.followers||[]).length;
+    modal.innerHTML=`<section class="w-full max-w-sm rounded-3xl overflow-hidden bg-white dark:bg-[#182229] text-slate-900 dark:text-white shadow-2xl">
+      <div class="h-24 bg-gradient-to-br from-[#00a884] to-[#075e54] grid place-items-center text-white text-4xl">${group?'👥':'📢'}</div>
+      <div class="p-5 text-center space-y-3"><img src="${esc(c.avatar||'')}" class="w-20 h-20 rounded-full object-cover mx-auto -mt-14 border-4 border-white dark:border-[#182229] bg-slate-200">
+      <div><h2 class="text-xl font-extrabold">${esc(c.name)}</h2><p class="text-xs text-slate-500 dark:text-slate-400 mt-1">${group?'Grup ObrolinSapp':'Saluran ObrolinSapp'} · ${count} ${group?'anggota':'pengikut'}</p></div>
+      <p class="text-sm text-slate-500 dark:text-slate-300">${group?(c.requireApproval?'Grup ini menggunakan persetujuan admin. Tekan tombol di bawah untuk mengajukan permintaan bergabung.':'Gabung untuk mulai melihat dan mengirim pesan di grup ini.'):'Ikuti saluran ini untuk melihat pembaruan terbaru.'}</p>
+      <button id="obro-join-confirm" class="w-full py-3 rounded-xl bg-[#00a884] hover:bg-[#008069] text-white text-sm font-bold">${group?'Join Group':'Ikuti Saluran'}</button>
+      <button id="obro-join-cancel" class="w-full py-2 text-xs text-slate-400">Nanti saja</button>
+      </div></section>`;
+    $('obro-join-confirm').onclick=()=>completeInviteJoin();
+    $('obro-join-cancel').onclick=()=>{modal.remove();history.replaceState(null,'',location.href.split('#')[0]);pendingInvite=null;};
+  }
+  function completeInviteJoin(){
+    if(!currentUserPhone){toast('Masuk terlebih dahulu','Login atau daftar akun untuk bergabung.');$('obro-join-overlay')?.remove();return;}
+    ensureRoles();
+    const inv=pendingInvite||inviteFromHash();if(!inv)return;
+    if(inv.type==='group'){
+      const c=db.chats[inv.id];if(!c)return;
+      if(c.members.includes(currentUserPhone)){toast('Sudah bergabung','Anda sudah menjadi anggota grup ini.');openWorkspace('group',c.id);}
+      else if(c.requireApproval){
+        c.joinRequests=c.joinRequests||[];
+        if(!c.joinRequests.includes(currentUserPhone))c.joinRequests.push(currentUserPhone);
+        db.adminNotifs.unshift({id:'join_'+Date.now(),type:'join_group',fromPhone:currentUserPhone,targetPhone:c.ownerPhone||c.members[0],groupId:c.id,reason:'Permintaan bergabung grup',detail:`${getUser(currentUserPhone)?.name||currentUserPhone} ingin bergabung ke grup ${c.name}.`,status:'pending',createdAt:Date.now()});
+        saveDatabase();toast('Permintaan terkirim','Diminta berarti tunggu disetujui oleh admin grup.');
+      }else{
+        c.members.push(currentUserPhone);pushSystem(c,`${getUser(currentUserPhone)?.name||currentUserPhone} bergabung ke grup`);saveDatabase();openWorkspace('group',c.id);toast('Berhasil bergabung',`Anda sekarang anggota ${c.name}.`);
+      }
+    }else{
+      const ch=db.channels.find(x=>x.id===inv.id);if(!ch)return;
+      ch.followers=ch.followers||[];if(!ch.followers.includes(currentUserPhone))ch.followers.push(currentUserPhone);
+      saveDatabase();setMainTab('channels');openWorkspace('channel',ch.id);toast('Saluran diikuti',`Anda mengikuti ${ch.name}.`);
+    }
+    $('obro-join-overlay')?.remove();history.replaceState(null,'',location.href.split('#')[0]);pendingInvite=null;
+  }
+  window.joinFromInvite=showJoinLanding;
+  window.addEventListener('load',()=>setTimeout(showJoinLanding,80));
+  const oldLogin=window.handleLogin;
+  if(typeof oldLogin==='function')window.handleLogin=function(){oldLogin.apply(this,arguments);setTimeout(()=>{if(currentUserPhone&&pendingInvite)showJoinLanding();},300);};
+
+  // Secure approval workflow for groups, plus admin decisions.
+  const oldAdminAction=window.adminHandleAction;
+  window.adminHandleAction=function(id,action){
+    const n=db?.adminNotifs?.find(x=>x.id===id);
+    if(n&&n.type==='join_group'){
+      if(!getUser(currentUserPhone)?.isAdmin){toast('Tidak diizinkan','Hanya admin aplikasi yang dapat memproses notifikasi ini.');return;}
+      const c=db.chats[n.groupId];if(!c)return;
+      if(action==='approve'){
+        c.members=c.members||[];if(!c.members.includes(n.fromPhone))c.members.push(n.fromPhone);
+        c.joinRequests=(c.joinRequests||[]).filter(p=>p!==n.fromPhone);
+        pushSystem(c,`${getUser(n.fromPhone)?.name||n.fromPhone} bergabung ke grup`);
+        n.resolutionText='Permintaan diterima — anggota berhasil ditambahkan';
+      }else{
+        c.joinRequests=(c.joinRequests||[]).filter(p=>p!==n.fromPhone);
+        n.resolutionText='Permintaan bergabung ditolak';
+      }
+      n.status='resolved';saveDatabase();renderAllViews();toast('Permintaan grup diproses',n.resolutionText);return;
+    }
+    if(n&&n.type==='verify_group'){
+      if(!getUser(currentUserPhone)?.isAdmin){toast('Tidak diizinkan','Hanya admin aplikasi yang dapat memproses verifikasi.');return;}
+      const c=db.chats[n.groupId];if(c){c.verifyPending=false;if(action==='approve'){c.isVerified=true;n.resolutionText='Diterima — grup mendapat centang biru';}else{n.resolutionText='Pengajuan centang biru grup ditolak';}}
+      n.status='resolved';saveDatabase();renderAllViews();toast('Verifikasi grup diproses',n.resolutionText||'Selesai');return;
+    }
+    if(typeof oldAdminAction==='function')return oldAdminAction(id,action);
+  };
+  const oldRenderAdmin=window.renderAdminTab;
+  window.renderAdminTab=function(){
+    if(typeof oldRenderAdmin==='function')oldRenderAdmin();
+    const host=$('admin-notifications-container');if(!host||!getUser(currentUserPhone)?.isAdmin)return;
+    const extra=(db.adminNotifs||[]).filter(n=>['join_group','verify_group'].includes(n.type));
+    if(!extra.length)return;
+    const html=extra.map(n=>{
+      const c=db.chats[n.groupId],u=getUser(n.fromPhone),pending=n.status==='pending';
+      const label=n.type==='join_group'?'Permintaan Join Group':'Pengajuan Centang Biru Grup';
+      return `<article class="p-4 rounded-2xl bg-white dark:bg-[#202c33] border border-[#00a884]/20 space-y-2"><div class="flex items-center justify-between gap-2"><b class="text-sm">${label}</b><span class="text-[10px] text-slate-400">${pending?'Menunggu':'Selesai'}</span></div><p class="text-xs text-slate-500 dark:text-slate-300">${esc(u?.name||n.fromPhone)} ${n.type==='join_group'?'meminta bergabung ke':'mengajukan centang biru untuk'} <b>${esc(c?.name||'Grup')}</b></p>${pending?`<div class="flex gap-2"><button onclick="adminHandleAction('${n.id}','approve')" class="obro-action-btn bg-[#00a884] text-white">${n.type==='join_group'?'Terima':'Terima centang biru'}</button><button onclick="adminHandleAction('${n.id}','reject')" class="obro-action-btn bg-rose-500/10 text-rose-500">Tolak</button></div>`:`<p class="text-xs text-emerald-500">${esc(n.resolutionText||'Selesai')}</p>`}</article>`;
+    }).join('');
+    host.insertAdjacentHTML('afterbegin',html);
+  };
+
+  // Group and channel role/member management.
+  window.openGroupProfile=function(){
+    const c=db?.chats?.[activeWorkspace?.id];if(!c||activeWorkspace?.type!=='group')return;
+    ensureRoles();const owner=c.ownerPhone||c.members[0],admin=isGroupAdmin(c),link=groupInviteLink(c);
+    const memberRows=c.members.map(phone=>{
+      const u=getUser(phone),role=phone===owner?'Pemilik':(c.adminPhones.includes(phone)?'Admin':'Anggota');
+      return `<div class="obro-member-row" onclick="openContactProfile('${esc(phone)}')"><img src="${esc(u?.avatar||'https://placehold.co/80?text=U')}" class="w-10 h-10 rounded-full object-cover"><div class="flex-1 min-w-0"><b class="text-sm block truncate">${esc(u?.name||phone)}</b><small class="text-xs text-slate-400">${esc('@'+(u?.username||phone))} · ${role}</small></div>${admin&&phone!==owner?`<button onclick="event.stopPropagation();toggleGroupAdmin('${esc(c.id)}','${esc(phone)}')" class="text-[10px] font-bold px-2 py-1 rounded-lg bg-[#00a884]/10 text-[#00a884]">${c.adminPhones.includes(phone)?'Cabut admin':'Jadikan admin'}</button>`:''}</div>`;
+    }).join('');
+    $('feature-profile-content').innerHTML=`<div class="space-y-4 max-h-[78vh] overflow-y-auto pr-1">
+      <div class="text-center"><img src="${esc(c.avatar||'')}" class="w-24 h-24 rounded-full mx-auto object-cover"><h3 class="font-bold text-lg mt-3">${esc(c.name)} ${c.isVerified?'<span class="text-sky-400">✓</span>':''}</h3><p class="text-xs text-slate-400">${c.members.length} anggota</p></div>
+      <div class="obro-share-frame"><div class="w-11 h-11 rounded-xl bg-[#00a884]/15 text-[#00a884] grid place-items-center text-xl">↗</div><div class="flex-1 min-w-0"><b class="text-sm block">Bagikan link grup</b><small class="text-xs text-slate-400">Undang teman ke grup ini</small></div><button class="obro-action-btn bg-[#00a884] text-white" onclick="copyGroupInvite('${esc(c.id)}')">Salin</button><button class="obro-action-btn bg-[#00a884]/10 text-[#00a884]" onclick="shareGroupInvite('${esc(c.id)}')">Bagikan</button></div>
+      ${admin?`<section class="p-3 rounded-2xl bg-slate-500/5 space-y-2"><b class="text-xs">Pengaturan grup</b><label class="text-xs flex items-center justify-between">Persetujuan admin untuk anggota baru <input type="checkbox" ${c.requireApproval?'checked':''} onchange="setGroupApproval(this.checked)"></label><input id="obro-group-edit-name" value="${esc(c.name)}" class="w-full p-2 rounded-xl bg-slate-100 dark:bg-[#111b21] text-sm"><button class="obro-action-btn bg-[#00a884] text-white w-full" onclick="saveObroGroupName()">Simpan nama grup</button></section>`:''}
+      <section class="space-y-2"><div class="flex justify-between items-center"><b class="text-xs uppercase tracking-wider text-slate-400">Anggota (${c.members.length})</b><small class="text-[10px] text-slate-400">Ketuk kontak untuk chat</small></div><div class="space-y-1">${memberRows}</div></section>
+      ${admin?`<button onclick="requestBlueTickGroup()" class="w-full obro-action-btn bg-sky-500/10 text-sky-500">Ajukan centang biru grup</button>`:''}
+      <button onclick="reportCurrentGroup()" class="w-full obro-action-btn bg-rose-500/10 text-rose-500">Laporkan grup</button>
+    </div>`;
+    openModal('modal-feature-profile');
+  };
+  window.toggleGroupAdmin=function(id,phone){
+    const c=db.chats[id];if(!c||!isGroupAdmin(c)||(c.ownerPhone||c.members[0])===phone)return;
+    c.adminPhones=c.adminPhones||[];c.adminPhones=c.adminPhones.includes(phone)?c.adminPhones.filter(x=>x!==phone):[...c.adminPhones,phone];
+    saveDatabase();openGroupProfile();toast('Peran anggota diperbarui','Status admin grup berhasil diperbarui.');
+  };
+  window.setGroupApproval=function(value){const c=db.chats[activeWorkspace?.id];if(!c||!isGroupAdmin(c))return;c.requireApproval=!!value;saveDatabase();toast('Pengaturan grup',value?'Persetujuan join diaktifkan.':'Join langsung diaktifkan.');};
+  window.saveObroGroupName=function(){const c=db.chats[activeWorkspace?.id],n=$('obro-group-edit-name')?.value.trim();if(!c||!isGroupAdmin(c)||!n)return;c.name=n;saveDatabase();renderAllViews();openGroupProfile();};
+  window.shareGroupInvite=function(id){const c=db.chats[id];if(!c)return;const url=groupInviteLink(c);if(navigator.share)navigator.share({title:'Join Group '+c.name,text:'Yuk gabung ke grup '+c.name,url}).catch(()=>{});else copyInviteSecure(url,'grup');};
+  const oldReqGroup=window.requestBlueTickGroup;
+  window.requestBlueTickGroup=function(){
+    const c=db.chats[activeWorkspace?.id];if(!c||!isGroupAdmin(c))return toast('Tidak diizinkan','Hanya admin grup yang dapat mengajukan centang biru.');
+    if(c.isVerified||c.verifyPending)return toast('Pengajuan grup','Grup sudah terverifikasi atau sedang ditinjau.');
+    c.verifyPending=true;db.adminNotifs.unshift({id:'vgrp_'+Date.now(),type:'verify_group',fromPhone:currentUserPhone,groupId:c.id,reason:'Pengajuan centang biru grup',detail:`Grup ${c.name} meminta centang biru.`,status:'pending',createdAt:Date.now()});
+    saveDatabase();toast('Pengajuan terkirim','Permintaan centang biru grup menunggu persetujuan admin aplikasi.');
+  };
+
+  window.openChannelProfile=function(){
+    const ch=db.channels.find(x=>x.id===activeWorkspace?.id);if(!ch)return;
+    ch.adminPhones=ch.adminPhones||[];const admin=isChannelAdmin(ch),owner=ch.ownerPhone===currentUserPhone,link=channelInviteLink(ch);
+    const followerRows=(ch.followers||[]).map(phone=>{const u=getUser(phone);return `<div class="obro-member-row" onclick="openContactProfile('${esc(phone)}')"><img src="${esc(u?.avatar||'https://placehold.co/80?text=U')}" class="w-9 h-9 rounded-full object-cover"><div class="flex-1 min-w-0"><b class="text-xs block">${esc(u?.name||phone)}</b><small class="text-[10px] text-slate-400">${esc('@'+(u?.username||phone))} · ${(ch.adminPhones.includes(phone)?'Admin':'Pengikut')}</small></div>${owner?`<button onclick="event.stopPropagation();toggleChannelAdmin('${esc(ch.id)}','${esc(phone)}')" class="text-[10px] px-2 py-1 rounded-lg bg-[#00a884]/10 text-[#00a884]">${ch.adminPhones.includes(phone)?'Cabut admin':'Jadikan admin'}</button>`:''}</div>`;}).join('');
+    $('feature-profile-content').innerHTML=`<div class="space-y-4 max-h-[78vh] overflow-y-auto pr-1"><div class="text-center"><img src="${esc(ch.avatar||'')}" class="w-20 h-20 rounded-full mx-auto object-cover"><h3 class="font-bold text-lg mt-2">${esc(ch.name)} ${ch.isVerified?'<span class="text-sky-400">✓</span>':''}</h3><p class="text-xs text-slate-400">${esc(ch.desc||'')}</p><p class="text-xs text-slate-400 mt-1">${(ch.followers||[]).length} pengikut</p></div>
+      <div class="obro-share-frame"><div class="w-10 h-10 rounded-xl bg-[#00a884]/15 grid place-items-center text-[#00a884] text-xl">↗</div><div class="flex-1"><b class="text-sm block">Bagikan saluran</b><small class="text-xs text-slate-400">Salin tautan saluran</small></div><button class="obro-action-btn bg-[#00a884] text-white" onclick="copyChannelInvite('${esc(ch.id)}')">Salin</button><button class="obro-action-btn bg-[#00a884]/10 text-[#00a884]" onclick="shareChannelInvite('${esc(ch.id)}')">Bagikan</button></div>
+      ${owner?`<section class="p-3 rounded-2xl bg-slate-500/5 space-y-2"><b class="text-xs">Kelola saluran</b><button class="w-full obro-action-btn bg-[#00a884] text-white" onclick="openEditChannelModal();closeModal('modal-feature-profile')">Edit profil saluran</button><button class="w-full obro-action-btn bg-sky-500/10 text-sky-500" onclick="requestChannelVerification()">Ajukan centang biru saluran</button><p class="text-xs text-slate-400">Link admin hanya dapat dibagikan oleh pemilik saluran.</p></section>`:''}
+      <section class="space-y-2"><b class="text-xs uppercase tracking-wider text-slate-400">Pengikut (${(ch.followers||[]).length})</b><div class="space-y-1">${followerRows||'<p class="text-xs text-slate-400">Belum ada pengikut.</p>'}</div></section></div>`;
+    openModal('modal-feature-profile');
+  };
+  window.toggleChannelAdmin=function(id,phone){const ch=db.channels.find(x=>x.id===id);if(!ch||ch.ownerPhone!==currentUserPhone||!ch.followers.includes(phone))return;ch.adminPhones=ch.adminPhones||[];ch.adminPhones=ch.adminPhones.includes(phone)?ch.adminPhones.filter(x=>x!==phone):[...ch.adminPhones,phone];saveDatabase();openChannelProfile();toast('Admin saluran diperbarui','Peran admin saluran berhasil diubah.');};
+  window.shareChannelInvite=function(id){const ch=db.channels.find(x=>x.id===id);if(!ch)return;const url=channelInviteLink(ch);if(navigator.share)navigator.share({title:'Ikuti '+ch.name,url}).catch(()=>{});else copyInviteSecure(url,'saluran');};
+
+  // Channel admins may publish posts and share admin invite links, while only owner can appoint admins.
+  const originalSend=window.sendMessage;
+  window.sendMessage=function(){
+    if(activeWorkspace?.type==='channel'){
+      const ch=db.channels.find(x=>x.id===activeWorkspace.id);
+      if(ch&&isChannelAdmin(ch)){
+        const input=$('ws-message-input'),text=input?.value.trim();if(!text)return;
+        ch.posts=ch.posts||[];ch.posts.push({id:'post_'+Date.now(),text,sender:currentUserPhone,timestamp:Date.now(),edited:false});
+        input.value='';saveDatabase();if(typeof renderChannelPosts==='function')renderChannelPosts(ch,true);return;
+      }
+    }
+    return originalSend.apply(this,arguments);
+  };
+  // Channel admin invite is generated separately from the public follow link.
+  window.channelAdminInviteLink=function(id){const ch=db.channels.find(x=>x.id===id);return ch?location.href.split('#')[0]+'#admin-saluran='+encodeURIComponent(id):'';};
+  window.copyChannelAdminInvite=function(id){const ch=db.channels.find(x=>x.id===id);if(!ch||!isChannelAdmin(ch))return;copyInviteSecure(channelAdminInviteLink(id),'link admin saluran');};
+  const originalJoinFromHash=window.joinFromInvite;
+  // Keep admin invitations private and explicit; recipient must be selected by owner in-app.
+  window.acceptChannelAdminInvite=function(id,phone){const ch=db.channels.find(x=>x.id===id);if(!ch||ch.ownerPhone!==currentUserPhone||!getUser(phone))return;ch.adminPhones=ch.adminPhones||[];if(!ch.adminPhones.includes(phone))ch.adminPhones.push(phone);saveDatabase();toast('Admin ditambahkan',`${getUser(phone).name} menjadi admin saluran.`);};
+
+  // Copy control for every direct/group message bubble, including media captions.
+  const originalRenderMessages=window.renderChatMessages;
+  window.renderChatMessages=function(chat){
+    originalRenderMessages.apply(this,arguments);
+    const box=$('ws-messages-container');if(!box)return;
+    box.querySelectorAll('.flex.group').forEach((row)=>{
+      const bubble=row.querySelector('.relative');if(!bubble)return;
+      const text=(bubble.innerText||'').replace(/\n\d{1,2}:\d{2}.*$/,'').trim();
+      if(!text||bubble.querySelector('.obro-copy-msg'))return;
+      const btn=document.createElement('button');btn.className='obro-copy-msg ml-1 text-[#00a884]';btn.textContent='Salin';
+      btn.title='Salin pesan';btn.onclick=async()=>{try{await navigator.clipboard.writeText(text);toast('Pesan disalin','Teks pesan berhasil disalin.');}catch(e){prompt('Salin pesan:',text);}};
+      const meta=bubble.querySelector('.flex.items-center.justify-end');meta?.appendChild(btn);
+    });
+  };
+  // Ensure copy controls are also attached after channel posts render.
+  const originalRenderPosts=window.renderChannelPosts;
+  if(typeof originalRenderPosts==='function')window.renderChannelPosts=function(){originalRenderPosts.apply(this,arguments);document.querySelectorAll('#ws-messages-container article,#ws-messages-container .channel-post').forEach(el=>{if(el.querySelector('.obro-copy-msg'))return;const t=el.innerText?.trim();if(!t)return;const b=document.createElement('button');b.className='obro-action-btn obro-copy-msg text-[#00a884]';b.textContent='Salin pesan';b.onclick=()=>navigator.clipboard?.writeText(t).then(()=>toast('Pesan disalin','Postingan berhasil disalin.'));el.appendChild(b);});};
+
+  // More polished story/status tab, while keeping all existing story actions.
+  const oldStatusRender=window.renderStatusTab;
+  window.renderStatusTab=function(){
+    if(typeof oldStatusRender==='function')oldStatusRender();
+    const host=$('tab-content-status');if(!host)return;
+    host.classList.add('bg-slate-50/60','dark:bg-[#0b141a]/40','rounded-2xl');
+    const mine=host.querySelector(':scope > div');
+    if(mine){mine.classList.add('shadow-sm','border','border-slate-200/70','dark:border-white/5');}
+  };
+
+  // Group join approval becomes visible to the requester when another tab updates localStorage.
+  window.addEventListener('storage',e=>{
+    if(e.key!=='ObrolinSapp_DB_v1'||!currentUserPhone)return;
+    try{const fresh=JSON.parse(e.newValue);if(!fresh?.users)return;db=fresh;ensureRoles();renderAllViews();const g=Object.values(db.chats||{}).find(c=>c.isGroup&&c.members?.includes(currentUserPhone)&&c.messages?.some(m=>m.type==='system'&&m.text.includes(getUser(currentUserPhone)?.name||currentUserPhone)));if(g&&activeWorkspace?.type!=='group')toast('Permintaan disetujui','Anda sudah ditambahkan ke grup.');}catch(_){}
+  });
+  // Improve group title role display.
+  const oldActiveRender=window.renderActiveWorkspace;
+  if(typeof oldActiveRender==='function')window.renderActiveWorkspace=function(){
+    ensureRoles();oldActiveRender.apply(this,arguments);
+    if(activeWorkspace?.type==='group'){const c=db.chats[activeWorkspace.id];if(c){const role=(c.ownerPhone||c.members[0])===currentUserPhone?'Pemilik':c.adminPhones.includes(currentUserPhone)?'Admin':'';const sub=$('ws-subtitle');if(sub&&role)sub.textContent=role+' · '+c.members.length+' anggota';}}
+    if(activeWorkspace?.type==='channel'){const ch=db.channels.find(x=>x.id===activeWorkspace.id);if(ch&&isChannelAdmin(ch)){ $('ws-composer')?.classList.remove('hidden');$('ws-channel-readonly-bar')?.classList.add('hidden');if(typeof renderChannelPosts==='function')renderChannelPosts(ch,true);}}
+  };
+
+  // Private admin invitation link for a channel (separate from the public follow link).
+  window.makeChannelAdminInvite=function(id){
+    const ch=db.channels.find(x=>x.id===id);if(!ch||ch.ownerPhone!==currentUserPhone)return '';
+    ch.adminInviteToken=ch.adminInviteToken||('adm_'+Math.random().toString(36).slice(2)+Date.now().toString(36));
+    saveDatabase();
+    return location.href.split('#')[0]+'#admin-saluran='+encodeURIComponent(id)+'&token='+encodeURIComponent(ch.adminInviteToken);
+  };
+  window.copyChannelAdminInvite=function(id){
+    const ch=db.channels.find(x=>x.id===id);if(!ch||ch.ownerPhone!==currentUserPhone)return toast('Tidak diizinkan','Hanya pemilik saluran yang dapat membuat link admin.');
+    copyInviteSecure(makeChannelAdminInvite(id),'link admin saluran');
+  };
+  const oldShowJoinLanding=showJoinLanding;
+  showJoinLanding=function(){
+    const h=location.hash||'';
+    if(h.startsWith('#admin-saluran=')){
+      const parts=h.slice(15).split('&'),id=decodeURIComponent(parts[0]||''),token=decodeURIComponent((parts.find(x=>x.startsWith('token='))||'').slice(6));
+      const ch=db?.channels?.find(x=>x.id===id);
+      if(!ch||!token||token!==ch.adminInviteToken){toast('Link admin tidak valid','Minta pemilik saluran membagikan link admin yang baru.');return;}
+      pendingInvite={type:'channel-admin',id,token};
+      let modal=$('obro-join-overlay');if(!modal){modal=document.createElement('div');modal.id='obro-join-overlay';modal.className='fixed inset-0 z-[240] bg-black/70 flex items-center justify-center p-4';document.body.appendChild(modal);}
+      modal.innerHTML=`<section class="w-full max-w-sm rounded-3xl bg-white dark:bg-[#182229] text-slate-900 dark:text-white p-5 text-center space-y-3"><div class="text-4xl">🛡️</div><h2 class="text-lg font-extrabold">Undangan Admin Saluran</h2><p class="text-sm text-slate-500 dark:text-slate-300">Anda diundang menjadi admin saluran <b>${esc(ch.name)}</b>.</p><button id="obro-join-confirm" class="w-full py-3 rounded-xl bg-[#00a884] text-white text-sm font-bold">Terima undangan admin</button><button id="obro-join-cancel" class="w-full py-2 text-xs text-slate-400">Nanti saja</button></section>`;
+      $('obro-join-confirm').onclick=()=>{
+        if(!currentUserPhone){toast('Masuk terlebih dahulu','Login untuk menerima undangan admin.');modal.remove();return;}
+        if(token!==ch.adminInviteToken){toast('Undangan kedaluwarsa','Minta link baru dari pemilik saluran.');modal.remove();return;}
+        ch.adminPhones=ch.adminPhones||[];if(!ch.adminPhones.includes(currentUserPhone))ch.adminPhones.push(currentUserPhone);
+        saveDatabase();modal.remove();history.replaceState(null,'',location.href.split('#')[0]);pendingInvite=null;
+        setMainTab('channels');openWorkspace('channel',ch.id);toast('Berhasil','Anda sekarang admin saluran '+ch.name+'.');
+      };
+      $('obro-join-cancel').onclick=()=>{modal.remove();history.replaceState(null,'',location.href.split('#')[0]);pendingInvite=null;};
+      return;
+    }
+    oldShowJoinLanding();
+  };
+  // Put the admin-link sharing action beside the channel owner's management controls.
+  const oldOpenChannelProfileForAdmin=window.openChannelProfile;
+  window.openChannelProfile=function(){
+    oldOpenChannelProfileForAdmin();
+    const ch=db.channels.find(x=>x.id===activeWorkspace?.id);if(!ch||ch.ownerPhone!==currentUserPhone)return;
+    const section=$('feature-profile-content')?.querySelector('section');
+    if(section&&!section.querySelector('[data-channel-admin-link]')){
+      const b=document.createElement('button');b.dataset.channelAdminLink='1';b.className='w-full obro-action-btn bg-slate-500/10 text-slate-600 dark:text-slate-200';b.textContent='Bagikan link admin saluran';
+      b.onclick=()=>copyChannelAdminInvite(ch.id);section.appendChild(b);
+    }
+  };
+
+  // Hook after app boot for role normalization and invite landing.
+  const boot=window.onload;
+  window.onload=function(){if(typeof boot==='function')boot.apply(this,arguments);setTimeout(()=>{ensureRoles();if(location.hash)showJoinLanding();},160);};
+})();
+</script>
+
+
+<!-- ObrolinSapp V7: cloud setup, editable group profile, WebRTC group calls -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+#obro-cloud-card{border:1px solid rgba(0,168,132,.25)}
+#obro-call-room{backdrop-filter:blur(14px)}
+.obro-call-video{width:100%;height:100%;object-fit:cover;background:#17232a;border-radius:14px}
+</style>
+<script id="obro-v7-upgrade">
+(function(){
+  const $=id=>document.getElementById(id);
+  const esc=v=>typeof escapeHtml==='function'?escapeHtml(String(v??'')):String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const CFG='ObrolinSapp_Supabase_Config';
+  let cloud=null, callRoom=null, callMedia=null, peerConnections=new Map(), groupCallId=null, groupCallKind='voice', groupCallHost=false;
+  const schema=`-- Jalankan di Supabase > SQL Editor
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  username text unique, display_name text not null default '',
+  avatar_url text, bio text default '', created_at timestamptz default now()
+);
+create table if not exists public.conversations (
+  id uuid primary key default gen_random_uuid(),
+  kind text not null check (kind in ('direct','group')),
+  title text, avatar_url text, owner_id uuid references auth.users(id),
+  created_at timestamptz default now()
+);
+create table if not exists public.conversation_members (
+  conversation_id uuid references public.conversations(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete cascade,
+  role text not null default 'member',
+  joined_at timestamptz default now(),
+  primary key(conversation_id,user_id)
+);
+create table if not exists public.messages (
+  id uuid primary key default gen_random_uuid(),
+  conversation_id uuid references public.conversations(id) on delete cascade,
+  sender_id uuid references auth.users(id),
+  body text not null default '',
+  message_type text not null default 'text',
+  created_at timestamptz default now()
+);
+alter table public.profiles enable row level security;
+alter table public.conversations enable row level security;
+alter table public.conversation_members enable row level security;
+alter table public.messages enable row level security;
+create policy "profiles readable by signed-in users" on public.profiles for select to authenticated using (true);
+create policy "users edit own profile" on public.profiles for all to authenticated using (auth.uid()=id) with check (auth.uid()=id);
+create policy "members read conversations" on public.conversations for select to authenticated using (exists(select 1 from public.conversation_members m where m.conversation_id=id and m.user_id=auth.uid()));
+create policy "members read membership" on public.conversation_members for select to authenticated using (user_id=auth.uid() or exists(select 1 from public.conversation_members m where m.conversation_id=conversation_id and m.user_id=auth.uid()));
+create policy "members read messages" on public.messages for select to authenticated using (exists(select 1 from public.conversation_members m where m.conversation_id=conversation_id and m.user_id=auth.uid()));
+create policy "members send messages" on public.messages for insert to authenticated with check (sender_id=auth.uid() and exists(select 1 from public.conversation_members m where m.conversation_id=conversation_id and m.user_id=auth.uid()));
+alter publication supabase_realtime add table public.messages;`;
+
+  function config(){try{return JSON.parse(localStorage.getItem(CFG)||'{}')}catch(_){return {}}}
+  function toast(t,m){if(typeof showToast==='function')showToast(t,m);}
+  function initCloud(){
+    const c=config();
+    if(!c.url||!c.key||!window.supabase?.createClient){cloud=null;return false;}
+    try{cloud=window.supabase.createClient(c.url,c.key);return true}catch(e){cloud=null;return false}
+  }
+  function addCloudCard(){
+    const host=$('tab-content-settings');if(!host||$('obro-cloud-card'))return;
+    const card=document.createElement('section');card.id='obro-cloud-card';card.className='p-4 rounded-2xl bg-slate-50 dark:bg-[#202c33] space-y-3';
+    card.innerHTML=`<div class="flex items-center justify-between"><div><h4 class="text-sm font-bold">Database Online (Supabase)</h4><p class="text-xs text-slate-400">Persiapan koneksi cloud untuk sinkronisasi lintas perangkat</p></div><span id="obro-cloud-status" class="text-[10px] px-2 py-1 rounded-full bg-amber-500/10 text-amber-500">Belum diatur</span></div>
+    <input id="obro-sb-url" placeholder="Supabase Project URL" class="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#111b21] border border-slate-200 dark:border-white/10 text-xs">
+    <input id="obro-sb-key" placeholder="Supabase anon/public key" class="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#111b21] border border-slate-200 dark:border-white/10 text-xs">
+    <div class="flex gap-2"><button id="obro-save-cloud" class="flex-1 py-2 rounded-xl bg-[#00a884] text-white text-xs font-bold">Simpan & Tes Koneksi</button><button id="obro-show-sql" class="px-3 py-2 rounded-xl bg-slate-500/10 text-xs font-bold">SQL Database</button></div>
+    <p class="text-[11px] text-slate-400">Gunakan anon/public key saja. Jangan pernah masukkan service_role key. Koneksi ini menyiapkan realtime signaling panggilan; chat lintas perangkat memerlukan migrasi akun dan pesan ke tabel cloud.</p>
+    <pre id="obro-sql-box" class="hidden max-h-52 overflow-auto whitespace-pre-wrap text-[10px] p-3 rounded-xl bg-slate-900 text-emerald-200"></pre>`;
+    host.appendChild(card);
+    const c=config();$('obro-sb-url').value=c.url||'';$('obro-sb-key').value=c.key||'';
+    $('obro-show-sql').onclick=()=>{$('obro-sql-box').textContent=schema;$('obro-sql-box').classList.toggle('hidden')};
+    $('obro-save-cloud').onclick=async()=>{
+      const url=$('obro-sb-url').value.trim(),key=$('obro-sb-key').value.trim();
+      if(!/^https:\/\/.+\.supabase\.co$/.test(url)||!key){toast('Konfigurasi belum lengkap','Masukkan Project URL dan anon/public key yang benar.');return}
+      localStorage.setItem(CFG,JSON.stringify({url,key}));
+      if(!initCloud()){toast('Koneksi gagal','Periksa URL, key, dan koneksi internet.');return}
+      $('obro-cloud-status').textContent='SDK siap';$('obro-cloud-status').className='text-[10px] px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-500';
+      toast('Supabase tersimpan','SDK cloud siap. Jalankan SQL dan aktifkan Supabase Auth sebelum memindahkan chat ke cloud.');
+    };
+  }
+
+  // Edit group name, description and avatar from the group profile.
+  const priorGroupProfile=window.openGroupProfile;
+  window.openGroupProfile=function(){
+    priorGroupProfile.apply(this,arguments);
+    const c=db?.chats?.[activeWorkspace?.id];if(!c||activeWorkspace?.type!=='group')return;
+    const host=$('feature-profile-content');if(!host)return;
+    let panel=host.querySelector('#obro-group-full-edit');
+    if(!panel){
+      panel=document.createElement('section');panel.id='obro-group-full-edit';panel.className='p-3 rounded-2xl bg-slate-500/5 space-y-2';
+      panel.innerHTML=`<b class="text-xs">Edit profil grup</b>
+        <label class="block text-[11px] text-slate-400">Foto grup</label><input id="obro-group-photo" type="file" accept="image/*" class="w-full text-xs">
+        <label class="block text-[11px] text-slate-400">Nama grup</label><input id="obro-group-name" class="w-full p-2 rounded-xl bg-slate-100 dark:bg-[#111b21] text-sm">
+        <label class="block text-[11px] text-slate-400">Deskripsi grup</label><textarea id="obro-group-desc" rows="3" class="w-full p-2 rounded-xl bg-slate-100 dark:bg-[#111b21] text-sm" placeholder="Tambahkan deskripsi grup..."></textarea>
+        <button id="obro-save-group-profile" class="w-full py-2.5 rounded-xl bg-[#00a884] text-white text-xs font-bold">Simpan Profil Grup</button>`;
+      const share=host.querySelector('.obro-share-frame');share?.insertAdjacentElement('afterend',panel);
+    }
+    $('obro-group-name').value=c.name||'';$('obro-group-desc').value=c.desc||'';
+    const canEdit=(c.ownerPhone||c.members?.[0])===currentUserPhone||(c.adminPhones||[]).includes(currentUserPhone);
+    panel.classList.toggle('hidden',!canEdit);
+    $('obro-save-group-profile').onclick=()=>{
+      const name=$('obro-group-name').value.trim();if(!name){toast('Nama grup kosong','Isi nama grup terlebih dahulu.');return}
+      c.name=name;c.desc=$('obro-group-desc').value.trim();
+      const file=$('obro-group-photo').files?.[0];
+      const save=()=>{saveDatabase();renderAllViews();window.openGroupProfile();toast('Profil grup diperbarui','Nama, deskripsi, dan foto grup berhasil disimpan di perangkat ini.')};
+      if(file){if(file.size>1.5*1024*1024){toast('Foto terlalu besar','Pilih gambar maksimal 1,5 MB.');return}
+        const reader=new FileReader();reader.onload=()=>{c.avatar=reader.result;save()};reader.readAsDataURL(file);
+      }else save();
+    };
+  };
+
+  // Group calling uses WebRTC media streams and Supabase Realtime broadcast signaling.
+  function callOverlay(){
+    let el=$('obro-call-room');if(el)return el;
+    el=document.createElement('div');el.id='obro-call-room';el.className='hidden fixed inset-0 z-[260] bg-[#071015]/95 text-white p-4 flex flex-col';
+    el.innerHTML=`<div class="flex items-center justify-between gap-3"><div><b id="obro-call-title" class="text-base">Panggilan Grup</b><p id="obro-call-sub" class="text-xs text-slate-400">Menghubungkan...</p></div><span class="text-xs text-emerald-400">ObrolinSapp</span></div>
+      <div id="obro-call-grid" class="flex-1 min-h-0 grid grid-cols-2 md:grid-cols-3 gap-2 py-4 overflow-auto"></div>
+      <div class="flex justify-center gap-4 pb-3"><button id="obro-call-mute" class="px-5 py-3 rounded-full bg-slate-700 text-sm">Matikan Mic</button><button id="obro-call-camera" class="px-5 py-3 rounded-full bg-slate-700 text-sm">Matikan Kamera</button><button id="obro-call-end" class="px-6 py-3 rounded-full bg-rose-600 font-bold text-sm">Akhiri</button></div>`;
+    document.body.appendChild(el);
+    $('obro-call-end').onclick=leaveGroupCall;
+    $('obro-call-mute').onclick=()=>{const t=callMedia?.getAudioTracks()[0];if(t){t.enabled=!t.enabled;$('obro-call-mute').textContent=t.enabled?'Matikan Mic':'Nyalakan Mic'}};
+    $('obro-call-camera').onclick=()=>{const t=callMedia?.getVideoTracks()[0];if(t){t.enabled=!t.enabled;$('obro-call-camera').textContent=t.enabled?'Matikan Kamera':'Nyalakan Kamera'}};
+    return el;
+  }
+  function sendSignal(event,payload){if(callRoom)callRoom.send({type:'broadcast',event,payload:{...payload,from:currentUserPhone,groupId:groupCallId}})}
+  function addVideoTile(id,label,stream,muted=false){
+    const grid=$('obro-call-grid');let tile=$('obro-tile-'+id.replace(/[^a-zA-Z0-9_-]/g,'_'));
+    if(!tile){tile=document.createElement('div');tile.id='obro-tile-'+id.replace(/[^a-zA-Z0-9_-]/g,'_');tile.className='relative min-h-36 bg-slate-800 rounded-2xl overflow-hidden';tile.innerHTML=`<video autoplay playsinline class="obro-call-video"></video><span class="absolute bottom-2 left-2 text-xs bg-black/60 px-2 py-1 rounded-lg"></span>`;grid.appendChild(tile)}
+    tile.querySelector('video').srcObject=stream;tile.querySelector('video').muted=muted;tile.querySelector('span').textContent=label;
+  }
+  function makePeer(peerPhone,initiator){
+    if(peerConnections.has(peerPhone))return peerConnections.get(peerPhone);
+    const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});peerConnections.set(peerPhone,pc);
+    callMedia?.getTracks().forEach(t=>pc.addTrack(t,callMedia));
+    pc.onicecandidate=e=>{if(e.candidate)sendSignal('ice',{to:peerPhone,candidate:e.candidate})};
+    pc.ontrack=e=>addVideoTile(peerPhone,getUser(peerPhone)?.name||peerPhone,e.streams[0]);
+    pc.onconnectionstatechange=()=>{if(['failed','disconnected','closed'].includes(pc.connectionState)){pc.close();peerConnections.delete(peerPhone)}};
+    if(initiator)pc.createOffer().then(o=>pc.setLocalDescription(o)).then(()=>sendSignal('offer',{to:peerPhone,description:pc.localDescription})).catch(console.error);
+    return pc;
+  }
+  async function subscribeGroupRoom(groupId){
+    if(!initCloud())throw new Error('Atur Supabase URL dan anon/public key di Pengaturan terlebih dahulu.');
+    if(callRoom)await cloud.removeChannel(callRoom);
+    groupCallId=groupId;
+    callRoom=cloud.channel('obrolinsapp-group-call-'+groupId,{config:{broadcast:{self:false},presence:{key:String(currentUserPhone)}}});
+    callRoom.on('broadcast',{event:'signal'},async({payload:p})=>{
+      if(!p||p.from===currentUserPhone||p.groupId!==groupCallId)return;
+      if(p.event==='invite'){
+        if(activeWorkspace?.type!=='group'||activeWorkspace.id!==groupCallId)return;
+        if(confirm(`${getUser(p.from)?.name||'Anggota grup'} memulai panggilan ${p.kind==='video'?'video':'suara'} grup. Gabung?`)){
+          await beginGroupCall(p.kind,false,p.from);
+        }
+      }else if(p.to===currentUserPhone){
+        if(p.event==='accept'&&groupCallHost){const pc=makePeer(p.from,true);return}
+        if(p.event==='offer'){const pc=makePeer(p.from,false);await pc.setRemoteDescription(new RTCSessionDescription(p.description));const ans=await pc.createAnswer();await pc.setLocalDescription(ans);sendSignal('answer',{to:p.from,description:pc.localDescription})}
+        if(p.event==='answer'){const pc=peerConnections.get(p.from);if(pc)await pc.setRemoteDescription(new RTCSessionDescription(p.description))}
+        if(p.event==='ice'){const pc=peerConnections.get(p.from);if(pc&&p.candidate)try{await pc.addIceCandidate(new RTCIceCandidate(p.candidate))}catch(_){}}
+        if(p.event==='leave'){peerConnections.get(p.from)?.close();peerConnections.delete(p.from)}
+      }
+    });
+    await new Promise((resolve,reject)=>callRoom.subscribe(status=>{if(status==='SUBSCRIBED')resolve();if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')reject(new Error('Supabase Realtime gagal tersambung.'))}));
+  }
+  async function beginGroupCall(kind,host=true,inviter=null){
+    const g=db?.chats?.[groupCallId||activeWorkspace?.id];if(!g||!g.isGroup)return;
+    groupCallId=g.id;groupCallKind=kind;groupCallHost=host;
+    try{
+      if(!callRoom)await subscribeGroupRoom(g.id);
+      callMedia=await navigator.mediaDevices.getUserMedia({audio:true,video:kind==='video'});
+      callOverlay().classList.remove('hidden');
+      $('obro-call-title').textContent=(kind==='video'?'Video Call':'Telepon')+' Grup · '+g.name;
+      $('obro-call-sub').textContent='Terhubung ke ruang panggilan. Pastikan anggota lain membuka grup ini.';
+      addVideoTile(currentUserPhone,'Anda',callMedia,true);
+      if(host)sendSignal('invite',{kind});
+      else sendSignal('accept',{to:inviter});
+    }catch(e){toast('Panggilan tidak dapat dimulai',e.message||'Izinkan akses mikrofon/kamera dan periksa koneksi Supabase.');}
+  }
+  async function leaveGroupCall(){
+    sendSignal('leave',{});
+    peerConnections.forEach(pc=>pc.close());peerConnections.clear();
+    callMedia?.getTracks().forEach(t=>t.stop());callMedia=null;
+    if(callRoom&&cloud){await cloud.removeChannel(callRoom);callRoom=null}
+    $('obro-call-room')?.classList.add('hidden');groupCallId=null;
+  }
+  window.startGroupCall=async function(kind){const g=db?.chats?.[activeWorkspace?.id];if(!g||!g.isGroup)return toast('Bukan grup','Buka percakapan grup terlebih dahulu.');groupCallId=g.id;await beginGroupCall(kind,true)};
+  const priorOpenWorkspace=window.openWorkspace;
+  window.openWorkspace=function(type,id){const result=priorOpenWorkspace.apply(this,arguments);if(type==='group'&&initCloud()){groupCallId=id;subscribeGroupRoom(id).catch(e=>console.warn('Group call listener:',e.message));}else if(type!=='group'&&callRoom&&cloud){cloud.removeChannel(callRoom);callRoom=null;groupCallId=null;}return result;};
+  const priorStartCall=window.startCall;
+  window.startCall=function(kind){
+    if(activeWorkspace?.type==='group'){window.startGroupCall(kind==='video'?'video':'voice');return}
+    return priorStartCall.apply(this,arguments);
+  };
+  const priorWorkspaceRender=window.renderActiveWorkspace;
+  if(typeof priorWorkspaceRender==='function')window.renderActiveWorkspace=function(){
+    priorWorkspaceRender.apply(this,arguments);
+    const head=$('workspace-header');if(!head)return;
+    let actions=$('obro-group-call-actions');
+    if(activeWorkspace?.type==='group'){
+      if(!actions){actions=document.createElement('div');actions.id='obro-group-call-actions';actions.className='flex items-center gap-1';head.querySelector('.flex.items-center.gap-1')?.appendChild(actions);if(!actions.parentElement)head.appendChild(actions)}
+      actions.innerHTML=`<button onclick="startGroupCall('voice')" class="px-2 py-2 rounded-xl bg-[#00a884]/10 text-[#00a884] text-xs font-bold" title="Telepon semua anggota">☎ Grup</button><button onclick="startGroupCall('video')" class="px-2 py-2 rounded-xl bg-[#00a884]/10 text-[#00a884] text-xs font-bold" title="Video call semua anggota">▣ Video</button>`;
+    }else actions?.remove();
+  };
+
+  window.addEventListener('load',()=>{setTimeout(()=>{initCloud();addCloudCard()},350)});
+  const priorSetTab=window.setMainTab;
+  if(typeof priorSetTab==='function')window.setMainTab=function(tab){const r=priorSetTab.apply(this,arguments);if(tab==='settings')setTimeout(addCloudCard,30);return r};
+})();
+</script>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const say=(a,b)=>typeof toast==='function'?toast(a,b):alert(a+'\n'+b);
+  const groupOwner=c=>c?.ownerPhone||c?.members?.[0];
+  const groupAdmin=c=>!!c&&(groupOwner(c)===currentUserPhone||(c.adminPhones||[]).includes(currentUserPhone));
+  const channelOwner=c=>c?.ownerPhone===currentUserPhone;
+  function pickMember(list,title){
+    const choices=(list||[]).filter(p=>p!==currentUserPhone);
+    if(!choices.length){say('Belum ada anggota','Tambahkan anggota lain terlebih dahulu.');return null;}
+    const menu=choices.map((p,i)=>`${i+1}. ${getUser(p)?.name||p} (${p})`).join('\n');
+    const answer=prompt(title+'\n\n'+menu+'\n\nMasukkan nomor anggota:');
+    const n=Number(answer);return Number.isInteger(n)&&n>=1&&n<=choices.length?choices[n-1]:null;
+  }
+  window.transferGroupOwnership=function(id){
+    const c=db?.chats?.[id];if(!c||groupOwner(c)!==currentUserPhone)return say('Tidak diizinkan','Hanya pemilik grup yang dapat memindahkan kepemilikan.');
+    const next=pickMember(c.members,'Pilih pemilik grup baru');if(!next)return;
+    if(!confirm(`Pindahkan kepemilikan grup kepada ${getUser(next)?.name||next}? Anda akan menjadi admin grup.`))return;
+    c.ownerPhone=next;c.adminPhones=Array.isArray(c.adminPhones)?c.adminPhones:[];
+    c.adminPhones=c.adminPhones.filter(p=>p!==next);if(!c.adminPhones.includes(currentUserPhone))c.adminPhones.push(currentUserPhone);
+    saveDatabase();openGroupProfile();say('Pemilik grup dipindahkan',`${getUser(next)?.name||next} sekarang menjadi pemilik. Anda tetap menjadi admin.`);
+  };
+  window.leaveObroGroup=function(id){
+    const c=db?.chats?.[id];if(!c||!c.members?.includes(currentUserPhone))return;
+    if(groupOwner(c)===currentUserPhone)return say('Pindahkan pemilik dulu','Pemilik grup tidak bisa keluar sebelum memindahkan kepemilikan kepada anggota lain.');
+    if(!confirm('Keluar dari grup ini?'))return;
+    c.members=c.members.filter(p=>p!==currentUserPhone);c.adminPhones=(c.adminPhones||[]).filter(p=>p!==currentUserPhone);
+    saveDatabase();closeModal('modal-feature-profile');activeWorkspace=null;
+    if(typeof renderAllViews==='function')renderAllViews();if(typeof setMainTab==='function')setMainTab('chats');
+    say('Berhasil keluar','Anda sudah keluar dari grup.');
+  };
+  window.transferChannelOwnership=function(id){
+    const ch=db?.channels?.find(x=>x.id===id);if(!ch||!channelOwner(ch))return say('Tidak diizinkan','Hanya pemilik saluran yang dapat memindahkan kepemilikan.');
+    const pool=(ch.followers||[]).filter(p=>p!==currentUserPhone);
+    const next=pickMember(pool,'Pilih pemilik saluran baru dari daftar pengikut');if(!next)return;
+    if(!confirm(`Pindahkan kepemilikan saluran kepada ${getUser(next)?.name||next}?`))return;
+    ch.ownerPhone=next;ch.adminPhones=(ch.adminPhones||[]).filter(p=>p!==next);if(!ch.adminPhones.includes(currentUserPhone))ch.adminPhones.push(currentUserPhone);
+    saveDatabase();openChannelProfile();say('Pemilik saluran dipindahkan',`${getUser(next)?.name||next} sekarang menjadi pemilik saluran.`);
+  };
+  window.leaveObroChannel=function(id){
+    const ch=db?.channels?.find(x=>x.id===id);if(!ch)return;
+    if(channelOwner(ch))return say('Pindahkan pemilik dulu','Pemilik saluran tidak bisa meninggalkan saluran sebelum memindahkan kepemilikan.');
+    if(!confirm('Berhenti mengikuti saluran ini?'))return;
+    ch.followers=(ch.followers||[]).filter(p=>p!==currentUserPhone);ch.adminPhones=(ch.adminPhones||[]).filter(p=>p!==currentUserPhone);
+    saveDatabase();closeModal('modal-feature-profile');activeWorkspace=null;if(typeof renderAllViews==='function')renderAllViews();if(typeof setMainTab==='function')setMainTab('channels');say('Berhasil','Anda berhenti mengikuti saluran.');
+  };
+
+  const oldGroupProfile=window.openGroupProfile;
+  window.openGroupProfile=function(){
+    oldGroupProfile.apply(this,arguments);
+    const c=db?.chats?.[activeWorkspace?.id];if(!c||activeWorkspace?.type!=='group')return;
+    const host=$('feature-profile-content');if(!host)return;
+    const owner=groupOwner(c),isOwner=owner===currentUserPhone,isAdmin=groupAdmin(c);
+    const share=host.querySelector('.obro-share-frame');
+    if(share)share.classList.toggle('hidden',!isAdmin);
+    let panel=host.querySelector('#obro-group-owner-actions');
+    if(!panel){panel=document.createElement('section');panel.id='obro-group-owner-actions';panel.className='p-3 rounded-2xl bg-slate-500/5 border border-slate-500/10 space-y-2';host.querySelector('.space-y-4')?.appendChild(panel);}
+    panel.innerHTML=`${isOwner?`<div class="space-y-2"><b class="text-xs">Kepemilikan grup</b><p class="text-[11px] text-slate-400">Sebelum keluar, pindahkan kepemilikan kepada anggota lain. Anda akan menjadi admin.</p><button class="w-full obro-action-btn bg-amber-500/10 text-amber-600" onclick="transferGroupOwnership('${esc(c.id)}')">Pindahkan kepemilikan</button></div>`:''}
+      <button class="w-full obro-action-btn bg-rose-500/10 text-rose-500" onclick="leaveObroGroup('${esc(c.id)}')">Keluar dari grup</button>`;
+    const photo=$('obro-group-photo');if(photo)photo.accept='image/*';
+    const edit=host.querySelector('#obro-group-full-edit');if(edit){edit.classList.toggle('hidden',!isAdmin);edit.classList.add('border','border-slate-500/10');}
+  };
+  const oldChannelProfile=window.openChannelProfile;
+  window.openChannelProfile=function(){
+    oldChannelProfile.apply(this,arguments);
+    const ch=db?.channels?.find(x=>x.id===activeWorkspace?.id);if(!ch)return;
+    const host=$('feature-profile-content');if(!host)return;
+    // Tautan saluran adalah tautan publik: tetap terlihat dan bisa dibagikan semua orang.
+    const share=host.querySelector('.obro-share-frame');if(share)share.classList.remove('hidden');
+    let panel=host.querySelector('#obro-channel-owner-actions');
+    if(!panel){panel=document.createElement('section');panel.id='obro-channel-owner-actions';panel.className='p-3 rounded-2xl bg-slate-500/5 border border-slate-500/10 space-y-2';host.querySelector('.space-y-4')?.appendChild(panel);}
+    panel.innerHTML=`${channelOwner(ch)?`<div class="space-y-2"><b class="text-xs">Kepemilikan saluran</b><p class="text-[11px] text-slate-400">Pindahkan kepemilikan kepada pengikut lain sebelum meninggalkan saluran.</p><button class="w-full obro-action-btn bg-amber-500/10 text-amber-600" onclick="transferChannelOwnership('${esc(ch.id)}')">Pindahkan kepemilikan</button></div>`:''}
+      <button class="w-full obro-action-btn bg-rose-500/10 text-rose-500" onclick="leaveObroChannel('${esc(ch.id)}')">${channelOwner(ch)?'Keluar dari saluran':'Berhenti mengikuti saluran'}</button>`;
+  };
+
+  // Make the wallpaper card a first-class Settings menu and open the full picker page/modal.
+  const oldSettings=window.renderSettingsTab;
+  if(typeof oldSettings==='function')window.renderSettingsTab=function(){
+    oldSettings.apply(this,arguments);
+    const host=$('tab-content-settings'),card=$('obro-wallpaper-entry');if(host&&card){host.prepend(card);card.style.minHeight='88px';}
+  };
+  // Improve the group editor presentation with a clear preview and compact form styling.
+  const style=document.createElement('style');style.textContent=`
+    #obro-group-full-edit{border:1px solid rgba(148,163,184,.18);background:rgba(148,163,184,.045);padding:16px!important;border-radius:20px!important}
+    #obro-group-full-edit input:not([type=file]),#obro-group-full-edit textarea{border:1px solid rgba(148,163,184,.2);outline:none;transition:border-color .2s,box-shadow .2s}
+    #obro-group-full-edit input:focus,#obro-group-full-edit textarea:focus{border-color:#00a884;box-shadow:0 0 0 3px rgba(0,168,132,.12)}
+    #obro-group-full-edit label{font-weight:600;letter-spacing:.01em;margin-top:6px}
+    #obro-group-full-edit button{box-shadow:0 5px 14px rgba(0,168,132,.14)}
+    #obro-group-owner-actions,#obro-channel-owner-actions{border-radius:18px}
+  `;document.head.appendChild(style);
+})();
+
+</script>
+
+<!-- ObrolinSapp V9: rapikan menu pengaturan -->
+<script id="obro-v9-settings-cleanup">
+(function(){
+  const $ = id => document.getElementById(id);
+
+  function cleanSettings(){
+    // Hilangkan panel pilihan wallpaper lama yang tampil langsung di halaman pengaturan.
+    $('chat-wallpaper-settings')?.remove();
+
+    // Hilangkan panel konfigurasi Database Online dari tampilan pengaturan.
+    // Library Supabase dan sistem panggilan grup tidak dihapus dari kode.
+    $('obro-cloud-card')?.remove();
+
+    const host = $('tab-content-settings');
+    const card = $('obro-wallpaper-entry');
+    const saveButton = host?.querySelector('button[onclick="saveUserProfile()"]');
+    if(host && card && saveButton){
+      // Letakkan menu Wallpaper Chat tepat setelah tombol Simpan Perubahan Profil.
+      saveButton.insertAdjacentElement('afterend', card);
+      card.style.minHeight = '88px';
+      card.style.marginTop = '12px';
+    }
+  }
+
+  const previousRenderSettings = window.renderSettingsTab;
+  if(typeof previousRenderSettings === 'function'){
+    window.renderSettingsTab = function(){
+      const result = previousRenderSettings.apply(this, arguments);
+      cleanSettings();
+      // Pastikan elemen yang dibuat ulang oleh renderer juga diposisikan benar.
+      requestAnimationFrame(cleanSettings);
+      return result;
+    };
+  }
+
+  // Bersihkan setelah panel cloud yang lama sempat dibuat saat startup.
+  window.addEventListener('load', function(){
+    setTimeout(cleanSettings, 450);
+    setTimeout(cleanSettings, 1100);
+  });
+
+  const previousSetMainTab = window.setMainTab;
+  if(typeof previousSetMainTab === 'function'){
+    window.setMainTab = function(tab){
+      const result = previousSetMainTab.apply(this, arguments);
+      if(tab === 'settings'){
+        setTimeout(cleanSettings, 40);
+        setTimeout(cleanSettings, 180);
+      }
+      return result;
+    };
+  }
+
+  // Jalankan juga jika halaman pengaturan sudah aktif saat script dimuat.
+  cleanSettings();
+})();
+</script>
+
 </body>
 </html>
